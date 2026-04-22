@@ -104,13 +104,18 @@ app.post('/api/upload', verifyPassword, upload.single('file'), async (req, res) 
         const fileExt = req.file.originalname.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
 
-        const { error } = await supabase.storage
+        const { data, error } = await supabase.storage
             .from('uploads')
             .upload(fileName, req.file.buffer, {
                 contentType: req.file.mimetype,
                 upsert: false
             });
-        if (error) throw error;
+        if (error) {
+            if (error.message?.includes('bucket') || error.message?.includes('not found') || error.statusCode === '404') {
+                throw new Error('Storage "uploads" 存储桶不存在！请去 Supabase Dashboard → Storage → New Bucket 创建名为 uploads 的公开存储桶');
+            }
+            throw new Error('上传失败: ' + error.message);
+        }
 
         const { data: { publicUrl } } = supabase.storage
             .from('uploads')
@@ -118,6 +123,7 @@ app.post('/api/upload', verifyPassword, upload.single('file'), async (req, res) 
 
         res.json({ url: publicUrl, name: req.file.originalname });
     } catch (err) {
+        console.error('[Upload Error]', err);
         res.status(500).json({ error: err.message });
     }
 });

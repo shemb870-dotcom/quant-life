@@ -95,12 +95,13 @@
         const CORRECT_PASSWORD = 'tjx20070827';
         const stored = localStorage.getItem('admin_token');
         if (stored !== CORRECT_PASSWORD) {
-            const msg = stored ? '已存储的密码不正确，请重新输入（密码：' + CORRECT_PASSWORD + '）' : '请输入管理密码';
-            const password = prompt(msg + ':', '');
+            localStorage.removeItem('admin_token');
+            const password = prompt('请输入管理密码:', '');
             if (password === CORRECT_PASSWORD) {
                 localStorage.setItem('admin_token', password);
+                window.location.reload();
             } else {
-                alert('密码错误！将重定向到主页');
+                alert('密码错误！');
                 window.location.href = '/';
             }
         }
