@@ -5,7 +5,7 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Sahara 量化后台</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
     <script id="tailwind-config">
@@ -257,11 +257,6 @@
         const API_URL = window.location.origin + '/api';
         const AUTH_TOKEN = 'tjx20070827';
 
-        const supabaseClient = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(
-            'https://fmbpumhigmqmqviogccv.supabase.co',
-            'sb_publishable_g_RyVyveBShzV5wG6Co2Ng_sf1z6Lll'
-        ) : null;
-
         let selectedCodeType = 'python';
         let uploadedFiles = [];
 
@@ -411,23 +406,28 @@
         }
 
         async function uploadFile(file, type, cardId) {
+            const _supabase = window.supabase || window.Supabase;
+            if (!_supabase || !_supabase.createClient) {
+                showToast('SDK 未加载，请刷新页面后重试', 'error');
+                return;
+            }
+
             try {
-                const client = window.supabase && window.supabase.createClient ? window.supabase.createClient(
+                const client = _supabase.createClient(
                     'https://fmbpumhigmqmqviogccv.supabase.co',
                     'sb_publishable_g_RyVyveBShzV5wG6Co2Ng_sf1z6Lll'
-                ) : null;
+                );
 
-                if (!client) throw new Error('Supabase SDK 未加载，请刷新页面重试');
-
-                const fileExt = file.name.split('.').pop();
+                const fileExt = file.name.split('.').pop() || 'bin';
                 const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
 
-                showToast('正在上传...');
+                showToast(`正在上传 ${formatFileSize(file.size)}...`);
                 const { data, error } = await client.storage
                     .from('uploads')
                     .upload(fileName, file, {
                         contentType: file.type || 'application/octet-stream',
-                        upsert: true
+                        upsert: true,
+                        cacheControl: '3600'
                     });
                 if (error) throw new Error(error.message || 'Storage 上传失败');
 
@@ -452,8 +452,16 @@
                 showToast('文件上传成功');
             } catch (err) {
                 console.error('[Upload Error]', err);
-                showToast(err.message || '上传失败', 'error');
+                showToast('上传失败: ' + (err.message || '未知错误'), 'error');
             }
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+            return bytes.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
         }
 
         function escapeHtml(text) {
