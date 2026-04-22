@@ -1,0 +1,10 @@
+# 依赖
+node_modules/
+*.log
+
+# 环境变量
+.env
+
+# IDE
+.vscode/
+.idea/
