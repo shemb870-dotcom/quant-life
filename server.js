@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,8 +23,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/admin.html', express.static(path.join(__dirname, 'admin.html')));
-
-const upload = multer({ storage: multer.memoryStorage() });
 
 const verifyPassword = (req, res, next) => {
     const auth = req.headers.authorization;
@@ -96,18 +93,21 @@ app.post('/api/posts', verifyPassword, async (req, res) => {
     }
 });
 
-app.post('/api/upload', verifyPassword, upload.single('file'), async (req, res) => {
+app.post('/api/upload', verifyPassword, async (req, res) => {
     if (!requireSupabase(res)) return;
     try {
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+        const { file_name, file_type, content, mime } = req.body;
+        if (!content || !file_name) return res.status(400).json({ error: 'Missing file data' });
 
-        const fileExt = req.file.originalname.split('.').pop();
+        const fileExt = file_name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
+
+        const buffer = Buffer.from(content, 'base64');
 
         const { data, error } = await supabase.storage
             .from('uploads')
-            .upload(fileName, req.file.buffer, {
-                contentType: req.file.mimetype,
+            .upload(fileName, buffer, {
+                contentType: mime || 'application/octet-stream',
                 upsert: false
             });
         if (error) {
@@ -121,7 +121,7 @@ app.post('/api/upload', verifyPassword, upload.single('file'), async (req, res) 
             .from('uploads')
             .getPublicUrl(fileName);
 
-        res.json({ url: publicUrl, name: req.file.originalname });
+        res.json({ url: publicUrl, name: file_name });
     } catch (err) {
         console.error('[Upload Error]', err);
         res.status(500).json({ error: err.message });

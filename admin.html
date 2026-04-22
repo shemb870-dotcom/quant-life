@@ -405,14 +405,29 @@
         }
 
         async function uploadFile(file, type, cardId) {
-            const formData = new FormData();
-            formData.append('file', file);
-
             try {
+                const content = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
                 const response = await fetch(`${API_URL}/upload`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${AUTH_TOKEN}` },
-                    body: formData
+                    headers: { 
+                        'Authorization': `Bearer ${AUTH_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        file_name: file.name,
+                        file_type: type,
+                        content: content,
+                        mime: file.type
+                    })
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || '上传失败');
