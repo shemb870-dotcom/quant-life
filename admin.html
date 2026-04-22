@@ -257,7 +257,7 @@
         const API_URL = window.location.origin + '/api';
         const AUTH_TOKEN = 'tjx20070827';
 
-        const supabaseClient = window.supabase ? createClient(
+        const supabaseClient = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(
             'https://fmbpumhigmqmqviogccv.supabase.co',
             'sb_publishable_g_RyVyveBShzV5wG6Co2Ng_sf1z6Lll'
         ) : null;
